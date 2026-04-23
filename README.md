@@ -445,3 +445,7 @@ PHP_Laravel12_TinyMCE_Text_Editor_Using_Alpine.JS
 ---
 
 Your PHP_Laravel12_TinyMCE_Text_Editor_Using_Alpine.JS Project is Now Ready!
+<<<<<<< HEAD
+=======
+
+>>>>>>> development
