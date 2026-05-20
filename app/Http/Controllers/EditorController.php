@@ -4,32 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Models\EditorContent;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class EditorController extends Controller
 {
-    // LIST (Dashboard)
     public function index(Request $request)
-{
-    $query = EditorContent::query();
+    {
+        $query = EditorContent::query();
 
-    if ($request->filled('search')) {
-        $search = $request->search;
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where('content', 'like', '%' . $search . '%');
+        }
 
-        $query->where('content', 'like', '%' . $search . '%');
+        $contents = $query->orderBy('id', 'asc')->get();
+
+        return view('editor.index', compact('contents'));
     }
 
-    $contents = $query->orderBy('id', 'asc')->get();
-
-    return view('editor.index', compact('contents'));
-}
-
-    // CREATE FORM
     public function create()
     {
         return view('editor.create');
     }
 
-    // STORE
     public function store(Request $request)
     {
         $request->validate([
@@ -38,18 +35,18 @@ class EditorController extends Controller
 
         EditorContent::create($request->only('content'));
 
+        Cache::forget('editor_draft');
+
         return redirect()->route('editor.index')
             ->with('success', 'Content created successfully');
     }
 
-    // EDIT FORM
     public function edit($id)
     {
         $content = EditorContent::findOrFail($id);
         return view('editor.edit', compact('content'));
     }
 
-    // UPDATE
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -63,7 +60,6 @@ class EditorController extends Controller
             ->with('success', 'Content updated successfully');
     }
 
-    // SOFT DELETE
     public function destroy($id)
     {
         EditorContent::findOrFail($id)->delete();
@@ -71,14 +67,12 @@ class EditorController extends Controller
         return back()->with('success', 'Moved to trash');
     }
 
-    // TRASH LIST
     public function trash()
     {
         $contents = EditorContent::onlyTrashed()->latest()->get();
         return view('editor.trash', compact('contents'));
     }
 
-    // RESTORE
     public function restore($id)
     {
         EditorContent::onlyTrashed()->findOrFail($id)->restore();
@@ -86,11 +80,26 @@ class EditorController extends Controller
         return back()->with('success', 'Restored successfully');
     }
 
-    // FORCE DELETE
     public function forceDelete($id)
     {
         EditorContent::onlyTrashed()->findOrFail($id)->forceDelete();
 
         return back()->with('success', 'Deleted permanently');
+    }
+
+    public function autoSave(Request $request)
+    {
+        $request->validate([
+            'content' => 'nullable|string',
+        ]);
+
+        Cache::put('editor_draft', [
+            'content' => $request->content
+        ], now()->addDays(7));
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Draft Saved'
+        ]);
     }
 }
